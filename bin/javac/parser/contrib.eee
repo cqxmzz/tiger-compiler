@@ -1,0 +1,67 @@
+native int readInt();
+native char readChar();
+native int printInt(int i);
+native int printChar(char c);
+native int printString(string s);
+native int printLine(string s);
+native char chr(int k11);
+native int ord(char k11);
+native int _malloc(int k11);
+native int _strcmp(int k11, int k12);
+native string _intToString(int k11);
+native string _charToString(char k11);
+native int _strlen(string k11);
+native string _strcat(string k11, string l11);
+
+string substring(string s11, int l11, int r11) {
+	int i;
+	string k;
+	k = "";
+	k = k + s11[l11];
+	for (i = l11+1; i < r11 + l11;i = i + 1)
+		k = k + s11[i];
+	return k; 
+}
+string readString() {
+  	char c11;
+	string k11;
+	k11 = "";
+  	c11 = readChar();
+	while (c11 == ' ' || c11 == '\n' || c11 == '\t')
+		c11 = readChar();
+	k11 = k11 + c11;
+	c11 = readChar();
+	while (c11 != ' ' && c11 != '\n' && c11 != '\t')
+	{
+		k11 = k11 + c11;
+		c11 = readChar();
+	}  	
+	return k11;
+}
+string readLine() {
+  	string k;
+	char c;
+	c = readChar();
+	while (c != '\n')
+	{
+		k = k + c;
+	}
+	return k;
+}
+int parseInt(string s11) {
+	int k;
+	int i;
+	k = 0;
+	for (i = 0;i < s11.length;i = i + 1)
+	{
+		k = k * 10 + ord(s11[i]) - 48;
+	}
+	return k;
+}
+int fillIntArray(int[] a11, int v11) {
+	  int i;
+	  for (i = 0; i < a11.length; i = i+1) {
+	    a11[i] = v11;
+	  }
+	  return 1;
+}
