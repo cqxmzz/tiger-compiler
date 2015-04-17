@@ -2,17 +2,21 @@ package javac.parser;
 
 import javac.absyn.*;
 import javac.env.*;
+
 import java.util.*;
+
 import javac.symbol.*;
 import javac.type.*;
+import javac.util.TigerException;
 
 public class SemanticTest
 {
 	public static Env global = new Env();
-	public static void functionCallTest(Iterator<Type> iter, Expr e, Env local) throws Exception
+	
+	public static void functionCallTest(Iterator<Type> iter, Expr e, Env local) throws TigerException
 	{
 		if (!iter.hasNext())
-			throw new Exception("0");
+			throw new TigerException(0, "parameter not enough", e);
 		if (e.inBracket == 1)
 		{
 			fillExprType(e, local);
@@ -26,26 +30,25 @@ public class SemanticTest
 				functionCallTest(iter, bin.l, local);
 				SemanticTest.fillExprType(bin.r, local);
 				if (!iter.hasNext())
-					throw new Exception("1");
+					throw new TigerException(1, "parameter not enough", bin);
 				if (!iter.next().equals(bin.r.ty))
-					throw new Exception("2");				
+					throw new TigerException(2, "parameter type mismatch", bin.r);			
 				return;
 			}
 		}
 		fillExprType(e, local);
 		if (!iter.next().equals(e.ty))
-			throw new Exception("3");
+			throw new TigerException(3, "parameter type mismatch", e);
 	}
 	
-	public static void fillExprType(Expr e, Env local) throws Exception
+	public static void fillExprType(Expr e, Env local) throws TigerException
 	{
 		if (e instanceof Id)
 		{
 			Entry entry = local.getEntry(((Id)e).sym);
 			if (entry == null)
 			{
-				System.out.println(e);
-				throw new Exception("4");
+				throw new TigerException(4, "ID not exist", ((Id)e).sym, e);
 			}
 			else if (entry instanceof VariableEntry)
 			{
@@ -75,10 +78,10 @@ public class SemanticTest
 			NewArray newArray = (NewArray)e;
 			fillExprType(newArray.expr, local);
 			if (!newArray.expr.ty.equals(INT.getInstance()))
-				throw new Exception("5");
+				throw new TigerException(5, "array size should be int", newArray.expr);
 			Type type = newArray.type.toType(local);
 			if (type == null)
-				throw new Exception("6");
+				throw new TigerException(6, "array type not exist", newArray.expr);
 			e.ty = new ARRAY(type);
 		}
 		else if (e instanceof NewRecord)
@@ -86,17 +89,17 @@ public class SemanticTest
 			NewRecord newRec = (NewRecord)e;
 			e.ty = newRec.type.toType(local);
 			if (e.ty == null)
-				throw new Exception("7");
+				throw new TigerException(7, "record type not exist", e);
 		}
 		else if (e instanceof SubscriptPostfix)
 		{
 			SubscriptPostfix sub = (SubscriptPostfix)e;
 			fillExprType(sub.expr, local);
 			if (!sub.expr.ty.isArray() && !sub.expr.ty.isString())
-				throw new Exception("8");
+				throw new TigerException(8, "should be array or string", sub.expr);
 			fillExprType(sub.subscript, local);
 			if (!sub.subscript.ty.equals(INT.getInstance()))
-				throw new Exception("9");
+				throw new TigerException(9, "index should be int", sub.subscript);
 			if (sub.expr.ty instanceof ARRAY)
 			{
 				e.ty = ((ARRAY)sub.expr.ty).elementType;
@@ -109,18 +112,18 @@ public class SemanticTest
 		{
 			FunctionCall fun = (FunctionCall)e;
 			if (!(fun.expr instanceof Id))
-				throw new Exception("10");
+				throw new TigerException(10, "function not exist", fun.expr);
 			Entry entry = local.getEntry(((Id)fun.expr).sym); 
 			if (entry == null || (!(entry instanceof FunctionEntry)))
-				throw new Exception("11");
+				throw new TigerException(11, "function name is not function", fun.expr);
 			if (fun.args != null)
 			{
 				if (((FunctionEntry)entry).arr.isEmpty())
-					throw new Exception("12");
+					throw new TigerException(12, "function ", fun.expr);
 				Iterator<Type> it = ((FunctionEntry)entry).arr.iterator();
 				functionCallTest(it, fun.args, local);
 				if (it.hasNext())
-					throw new Exception("13");
+					throw new TigerException(13, "function parameter length not match", fun.args);
 			}
 			e.ty = ((FunctionEntry)entry).returnType;
 		}
@@ -139,10 +142,10 @@ public class SemanticTest
 				return; 
 			} 
 			else if (!fiel.expr.ty.isRecord())
-				throw new Exception("14");
+				throw new TigerException(14, "type is not a record", fiel.field, fiel.expr);
 			Type type = ((RECORD)fiel.expr.ty).findSymbol(fiel.field);
 			if (type == null)
-				throw new Exception("15");
+				throw new TigerException(15, "type not exist", fiel.field, fiel.expr);
 			e.ty = type;
 			e.assignable = 1;
 		}
@@ -151,7 +154,7 @@ public class SemanticTest
 			UnaryExpr unar = (UnaryExpr)e;
 			fillExprType(unar.expr, local);
 			if (unar.expr.ty != INT.getInstance())
-			throw new Exception("16");
+				throw new TigerException(16, "should be int inside unary expression", unar.expr);
 			e.ty = INT.getInstance();
 		}
 		else if (e instanceof BinaryExpr)
@@ -164,7 +167,7 @@ public class SemanticTest
 			if (bin.op == BinaryOp.DIVIDE || bin.op == BinaryOp.MODULO || bin.op == BinaryOp.MULTIPLY || bin.op == BinaryOp.MINUS)
 			{
 				if (!(leftType.isInt() && rightType.isInt()))
-					throw new Exception("17");
+					throw new TigerException(17, "should be int inside binary expression", bin);
 				e.ty = INT.getInstance();
 				return;
 			}
@@ -172,7 +175,7 @@ public class SemanticTest
 			{
 				if (leftType.isArray() || leftType.isRecord() || leftType.isNull() || rightType.isArray() || rightType.isRecord() || rightType.isNull()) 
 				{
-					throw new Exception("18");
+					throw new TigerException(18, "should be int/string inside binary expression", bin);
 				}
 				else if (leftType.isString() || rightType.isString()) 
 				{
@@ -188,7 +191,8 @@ public class SemanticTest
 				{
 					return;
 				}
-				else throw new Exception("19");
+				else 
+					throw new TigerException(19, "compare expression not match", bin);
 			}
 			else if (bin.op == BinaryOp.EQ || bin.op == BinaryOp.NEQ)
 			{
@@ -197,13 +201,14 @@ public class SemanticTest
 				{
 					return;
 				}
-				else throw new Exception("20");
+				else 
+					throw new TigerException(20, "compare expression not match", bin);
 			}
 			else if (bin.op == BinaryOp.AND || bin.op == BinaryOp.OR)
 			{
 				if ((!leftType.isInt()) || (!rightType.isInt()))
 				{
-					throw new Exception("21");
+					throw new TigerException(21, "logic expression need int", bin);
 				}
 				e.ty = INT.getInstance();
 				return;
@@ -211,10 +216,10 @@ public class SemanticTest
 			else if (bin.op == BinaryOp.ASSIGN)
 			{
 				if (bin.l.assignable == 0)
-					throw new Exception("22");
+					throw new TigerException(22, "left side not assignable", bin);
 				if (!leftType.equals(rightType) && !((leftType instanceof RECORD) && rightType == Type.NULL))
 				{
-					throw new Exception("23");
+					throw new TigerException(23, "assignment type not match", bin);
 				}
 				e.ty = leftType;
 				e.assignable = 0;
@@ -225,12 +230,14 @@ public class SemanticTest
 				e.ty = rightType;
 				return;
 			}
-			else throw new Exception("24");
+			else 
+				throw new TigerException(24, "unknown binary expression", bin);
 		}
-		else throw new Exception("25");
+		else 
+			throw new TigerException(25, "unknown expression", e);
 	}
 	
-	public static void stmtCheck(Stmt s, Env local, boolean inLoop, Type funReturnType) throws Exception
+	public static void stmtCheck(Stmt s, Env local, boolean inLoop, Type funReturnType) throws TigerException
 	{
 		if (s instanceof CompoundStmt)
 		{
@@ -249,7 +256,7 @@ public class SemanticTest
 			IfStmt ifStmt = (IfStmt)s;
 			fillExprType(ifStmt.cond, local);
 			if (!ifStmt.cond.ty.isInt())
-				throw new Exception("26");
+				throw new TigerException(26, "expression in if should be int", ifStmt.cond);
 			stmtCheck(ifStmt.thenPart, local, inLoop, funReturnType);
 			if (ifStmt.elsePart != null)
 				stmtCheck(ifStmt.elsePart, local, inLoop, funReturnType);
@@ -259,7 +266,7 @@ public class SemanticTest
 			WhileStmt whileStmt = (WhileStmt)s;
 			fillExprType(whileStmt.cond, local);
 			if (!whileStmt.cond.ty.isInt())
-				throw new Exception("27");
+				throw new TigerException(27, "expression in while should be int", whileStmt.cond);
 			stmtCheck(whileStmt.body, local, true, funReturnType);
 		}
 		else if (s instanceof ForStmt)
@@ -271,7 +278,7 @@ public class SemanticTest
 			{
 				fillExprType(forStmt.cond, local);
 				if (!forStmt.cond.ty.isInt())
-					throw new Exception("28");
+					throw new TigerException(28, "expression in for should be int", forStmt.cond);
 			}
 			if (forStmt.step != null)
 				fillExprType(forStmt.step, local);
@@ -280,30 +287,31 @@ public class SemanticTest
 		else if (s instanceof BreakStmt)
 		{
 			if (!inLoop)
-				throw new Exception("29");
+				throw new TigerException(29, "Break should be in a loop", s);
 		}
 		else if (s instanceof ContinueStmt)
 		{
 			if (!inLoop)
-				throw new Exception("30");
+				throw new TigerException(30, "Continue should be in a loop", s);
 		}
 		else if (s instanceof ReturnStmt)
 		{
 			ReturnStmt returnStmt = (ReturnStmt)s;
 			fillExprType(returnStmt.expr, local);
 			if (!funReturnType.equals(returnStmt.expr.ty))
-				throw new Exception("31");
+				throw new TigerException(31, "return type mismatch", returnStmt);
 		}
 		else
 		{
-			throw new Exception("32");
+			throw new TigerException(32, "Unknown Statement");
 		}
 	}
 	
-	public static void firstTraverse(TranslationUnit t) throws Exception
+	public static void firstTraverse(TranslationUnit t) throws TigerException
 	{
 		Iterator<ExternalDecl> it = (t.externalDeclarations).iterator();
 		int Main = 0;
+		//check main function and get global env
 		while (it.hasNext())
 		{
 			ExternalDecl externalDecl = it.next();
@@ -316,16 +324,16 @@ public class SemanticTest
 			{
 				if (global.getEntry(((RecordDef)externalDecl).name) != null)
 				{
-					throw new Exception("33");
+					throw new TigerException(33, "Record already defined: ", ((RecordDef)externalDecl).name, (RecordDef)externalDecl);
 				}
 				global.putEntry(((RecordDef)externalDecl).name, new TypeEntry(((RecordDef)externalDecl).name.toString()));
 			}
 		}
 		if (Main != 1) 
-			throw new Exception("34");
+			throw new TigerException(34, "One and only one main function needed");
 	}
 
-	public static void secondTraverse(TranslationUnit t) throws Exception
+	public static void secondTraverse(TranslationUnit t) throws TigerException
 	{
 		Iterator<ExternalDecl> it = (t.externalDeclarations).iterator();
 		while (it.hasNext())
@@ -336,17 +344,17 @@ public class SemanticTest
 				FunctionDef fun = (FunctionDef)externalDecl;
 				Symbol funcName = fun.head.functionName;
 				if (global.getEntry(funcName) != null)
-					throw new Exception("35");
+					throw new TigerException(35, "Already have function name: ", funcName, fun);
 				FunctionEntry functionEntry = new FunctionEntry(funcName.toString());
 				if (fun.head.type.toType(global) == null)
-					throw new Exception("36");
+					throw new TigerException(36,"return type not exist", fun.head.functionName, fun.head);
 				functionEntry.returnType = fun.head.type.toType(global);
 				Iterator<ParameterDecl> it1 = fun.head.parameterList.parameterDeclarations.iterator();
 				while (it1.hasNext())
 				{
 					ParameterDecl parameterDecl = it1.next();
 					if (parameterDecl.type.toType(global) == null) 
-						throw new Exception("37");
+						throw new TigerException(37, "parameter type not exist", parameterDecl.name, parameterDecl);
 					functionEntry.arr.add(parameterDecl.type.toType(global));
 				}
 				global.putEntry(funcName, functionEntry);
@@ -364,12 +372,12 @@ public class SemanticTest
 					Iterator<Symbol> it2 = variableDecl.ids.ids.iterator();
 					Type type = variableDecl.type.toType(global);
 					if (type == null)
-						throw new Exception("38");
+						throw new TigerException(38, "type not exist", variableDecl);
 					while (it2.hasNext())
 					{
 						Symbol symbol = it2.next();
 						if (record.findSymbol(symbol) != null) 
-							throw new Exception("39");
+							throw new TigerException(39, "id already exist", symbol, variableDecl.ids);
 						record.fields.add(new RECORD.RecordField(type, symbol, flag++));
 					}
 				}
@@ -378,17 +386,17 @@ public class SemanticTest
 			{
 				Symbol funcName = ((PrototypeDecl)externalDecl).head.functionName;
 				if (global.getEntry(funcName) != null)
-					throw new Exception("40");
+					throw new TigerException(40, "Prototype name existed", funcName, ((PrototypeDecl)externalDecl).head);
 				FunctionEntry functionEntry = new FunctionEntry(funcName.toString());
 				if (((PrototypeDecl)externalDecl).head.type.toType(global) == null)
-					throw new Exception("41");
+					throw new TigerException(41, "Prototype type not exist", funcName, ((PrototypeDecl)externalDecl).head);
 				functionEntry.returnType = ((PrototypeDecl)externalDecl).head.type.toType(global);
 				Iterator<ParameterDecl> it1 = ((PrototypeDecl)externalDecl).head.parameterList.parameterDeclarations.iterator();
 				while (it1.hasNext())
 				{
 					ParameterDecl parameterDecl = it1.next();
 					if (parameterDecl.type.toType(global) == null) 
-						throw new Exception("42");
+						throw new TigerException(42, "Prototype type not exist", parameterDecl.name, parameterDecl);
 					functionEntry.arr.add(parameterDecl.type.toType(global));
 				}
 				global.putEntry(funcName, functionEntry);
@@ -396,7 +404,7 @@ public class SemanticTest
 		}
 	}
 
-	public static void thirdTraverse(TranslationUnit t) throws Exception
+	public static void thirdTraverse(TranslationUnit t) throws TigerException
 	{
 		Iterator<ExternalDecl> it = t.externalDeclarations.iterator();
 		while (it.hasNext())
@@ -414,7 +422,7 @@ public class SemanticTest
 					Symbol name = parameterDecl.name;
 					if (local.getEntry(name) != null) 
 					{
-						throw new Exception("44");
+						throw new TigerException(44, "parameter name already existed", name, parameterDecl);
 					}
 					local.putEntry(name, new VariableEntry(name, parameterDecl.type.toType(local)));
 				}
@@ -425,13 +433,13 @@ public class SemanticTest
 					{
 						VariableDecl varDecl = it2.next();
 						if (varDecl.type.toType(local) == null)
-							throw new Exception("45");
+							throw new TigerException(45, "Variable type not exist", varDecl);
 						Iterator<Symbol> it3 = varDecl.ids.ids.iterator();
 						while (it3.hasNext())
 						{
 							Symbol name = it3.next();
 							if (local.getEntry(name) != null)
-								throw new Exception("46");
+								throw new TigerException(46, "Variable name existed", name, varDecl);
 							local.putEntry(name, new VariableEntry(name, varDecl.type.toType(local)));
 						}
 					}
@@ -450,7 +458,7 @@ public class SemanticTest
 				{
 					ParameterDecl parameterDecl = it1.next();
 					if (global.getEntry(parameterDecl.name) != null) 
-						throw new Exception("47");
+						throw new TigerException(47, "parameter name already existed", parameterDecl.name, parameterDecl);
 				}
 			}
 		}

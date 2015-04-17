@@ -13,11 +13,11 @@ public class Tiger
 		{
 			String test = "test.java";
 			if (args.length != 0) test = args[0];
-			ParserTest.parse(test);
+			//ParserTest.parse(test);
 			ParserTest parser1 = new ParserTest();
 			TranslationUnit tree = parser1.getTree(test);
-			SemanticTest.firstTraverse(tree);
-			SemanticTest.secondTraverse(tree);
+			SemanticTest.firstTraverse(tree);//count main function, get record names
+			SemanticTest.secondTraverse(tree);//get functions, Prototypes, records
 			SemanticTest.thirdTraverse(tree);
 
 			GetQuads.ini();

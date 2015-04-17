@@ -18,5 +18,15 @@ public abstract class Node {
 		return ReflectionToStringBuilder.toString(this, ToStringStyle.SHORT_PREFIX_STYLE);
 	}
 	
+	public Position getPosition()
+	{
+		return pos;
+	}
+	
+	public String position()
+	{
+		return pos.toString();
+	}
+	
 	public abstract void accept(NodeVisitor visitor);
 }
